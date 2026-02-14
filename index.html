@@ -59,6 +59,23 @@
             transition: all 0.3s;
             -webkit-tap-highlight-color: transparent;
         }
+
+        #reset-view {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 20;
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+            border: 1px solid #00d4ff;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.3s;
+            -webkit-tap-highlight-color: transparent;
+        }
         
         #info {
             position: absolute;
@@ -108,18 +125,25 @@
     </div>
 
     <button id="toggle-info">?</button>
+    <button id="reset-view">RESET VIEW</button>
 
     <div id="info">
-        <b style="color: #00d4ff;">ระบบเปรียบเทียบพาเลท (Super Optimized)</b><br>
+        <b style="color: #00d4ff;">ระบบเปรียบเทียบพาเลท (Navigation Fixed)</b><br>
         <span id="wood-label-ui" style="color: #deb887;">-</span><br>
         <span id="plastic-label-ui" style="color: #4dabf7;">-</span><br>
         <span style="color: #ff4d4d;">ขวา: Plastic Red + Hood Protection</span><br>
         <hr style="border:0; border-top:1px solid #333; margin:8px 0;">
         <small id="perf-mode">Performance Mode: Active</small>
+        <br><br>
+        <b style="color: #00ff88;">วิธีควบคุมบนมือถือ:</b><br>
+        - 1 นิ้ว: หมุนรอบวัตถุ<br>
+        - 2 นิ้วถ่าง: ซูมเข้า/ออก<br>
+        - 2 นิ้วเลื่อนพร้อมกัน: ย้ายตำแหน่งหน้าจอ (Pan)<br>
+        <i>*หากหลงทาง ให้กดปุ่ม RESET VIEW มุมขวาบน</i>
     </div>
 
     <div id="controls-hint">
-        📱 หมุน: 1 นิ้ว | ซูม: 2 นิ้ว
+        📱 หมุน: 1 นิ้ว | ซูม/เลื่อนหน้าจอ: 2 นิ้ว
     </div>
 
     <div id="credit">Created by Jamorn</div>
@@ -137,12 +161,12 @@
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        // Check if device is mobile
         const isMobile = window.innerWidth < 768;
         
-        // UI Logic
+        // UI Helpers
         const infoBtn = document.getElementById('toggle-info');
         const infoPanel = document.getElementById('info');
+        const resetBtn = document.getElementById('reset-view');
         let isPanelVisible = false;
 
         infoBtn.addEventListener('click', (e) => {
@@ -165,21 +189,15 @@
                 ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.strokeStyle = '#222'; ctx.lineWidth = 20;
                 ctx.strokeRect(40, 40, canvas.width - 80, canvas.height - 80);
-                
                 ctx.fillStyle = '#e91e63'; ctx.font = 'bold 60px sans-serif'; ctx.textAlign = 'center';
                 ctx.fillText('PREMIUM', canvas.width / 2, 200);
                 ctx.fillStyle = '#333'; ctx.font = 'bold 80px sans-serif';
                 ctx.fillText('PRODUCT', canvas.width / 2, 280);
-                
                 ctx.fillStyle = '#00d4ff'; ctx.fillRect(100, 320, canvas.width - 200, 10);
                 ctx.font = '30px sans-serif'; ctx.fillStyle = '#666';
                 ctx.fillText('Size: 27 x 40 x 12 cm', canvas.width / 2, 450);
-                
                 ctx.fillStyle = '#000';
-                for(let i=0; i<20; i++) {
-                    ctx.fillRect(150 + (i*10), 550, 5, 80);
-                }
-
+                for(let i=0; i<20; i++) ctx.fillRect(150 + (i*10), 550, 5, 80);
                 sharedFrontTexture = new THREE.CanvasTexture(canvas);
                 sharedFrontTexture.anisotropy = 2;
                 return sharedFrontTexture;
@@ -188,23 +206,19 @@
             static getSideTexture() {
                 if (sharedSideTexture) return sharedSideTexture;
                 const canvas = document.createElement('canvas');
-                // ใช้ความละเอียดต่ำลงบนมือถือเพื่อลด VRAM
                 canvas.width = isMobile ? 1024 : 2048; 
                 canvas.height = isMobile ? 256 : 512;
                 const ctx = canvas.getContext('2d');
                 ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = '#000000'; ctx.textBaseline = 'middle';
-                
                 const scale = isMobile ? 0.5 : 1;
                 const midY = canvas.height / 2;
                 const centerX = canvas.width / 2;
                 let startX = centerX - (800 * scale);
-
                 ctx.textAlign = 'left';
                 ctx.font = `bold ${65 * scale}px sans-serif`;
                 ctx.fillText('1126NK 0260204008', startX, midY);
                 startX += (690 * scale); 
-
                 const symbolX = startX + (50 * scale);
                 const symbolY = midY;
                 ctx.lineWidth = 7 * scale; ctx.strokeStyle = '#000';
@@ -213,23 +227,19 @@
                 ctx.closePath(); ctx.stroke();
                 ctx.beginPath(); ctx.moveTo(symbolX, symbolY - (37 * scale)); ctx.lineTo(symbolX, symbolY + (37 * scale)); ctx.stroke();
                 ctx.beginPath(); ctx.moveTo(symbolX - (17 * scale), symbolY); ctx.lineTo(symbolX + (17 * scale), symbolY); ctx.stroke();
-
                 ctx.font = `bold ${30 * scale}px sans-serif`;
                 ctx.fillText('TIS.1306-2566', symbolX + (55 * scale), midY - (19 * scale));
                 ctx.fillText('PP-01-1-5-F', symbolX + (55 * scale), midY + (19 * scale));
                 startX += (320 * scale); 
-
                 const qrX = startX; const qrY = midY - (42 * scale);
                 ctx.fillRect(qrX, qrY, 85 * scale, 85 * scale); ctx.fillStyle = '#fff';
                 for(let i=0; i<3; i++) for(let j=0; j<3; j++) if((i+j)%2==0) ctx.fillRect(qrX+(9*scale)+(i*24*scale), qrY+(9*scale)+(j*24*scale), 20*scale, 20*scale);
                 ctx.fillStyle = '#000';
                 startX += (140 * scale); 
-
                 ctx.font = `bold ${37 * scale}px sans-serif`;
                 ctx.fillText('PP HOMO', startX, midY - (19 * scale)); ctx.fillText('B  06:28', startX, midY + (19 * scale));
                 startX += (230 * scale); ctx.font = `italic bold ${42 * scale}px sans-serif`;
                 ctx.fillText('(RoHS)', startX, midY);
-
                 const texture = new THREE.CanvasTexture(canvas);
                 texture.center.set(0.5, 0.5); 
                 texture.rotation = (Math.PI / 2) + Math.PI; 
@@ -248,7 +258,6 @@
                 ctx.fillStyle = 'white'; ctx.font = 'bold 32px sans-serif';
                 ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                 ctx.fillText(text, 256, 64);
-                
                 const tex = new THREE.CanvasTexture(canvas);
                 const mat = new THREE.SpriteMaterial({ map: tex });
                 const sprite = new THREE.Sprite(mat);
@@ -261,10 +270,8 @@
             constructor(width = 120, length = 100, height = 15) {
                 this.group = new THREE.Group();
                 const woodMat = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
-                // Simplify geometry for mobile (fewer segments)
                 const boardGeo = new THREE.BoxGeometry(14, 2, length);
                 const stringerGeo = new THREE.BoxGeometry(4, height - 4, length);
-                
                 for (let i = 0; i < 7; i++) {
                     const board = new THREE.Mesh(boardGeo, woodMat);
                     board.position.set(-width/2 + 7 + (i * 17.5), height - 1, 0);
@@ -285,7 +292,6 @@
                 const topDeck = new THREE.Mesh(new THREE.BoxGeometry(width, 3, length), plasticMat);
                 topDeck.position.y = height - 1.5;
                 this.group.add(topDeck);
-                
                 const legGeo = new THREE.BoxGeometry(15, height - 3, 15);
                 const legPositions = [{x:-52,z:-42},{x:0,z:-42},{x:52,z:-42},{x:-52,z:0},{x:0,z:0},{x:52,z:0},{x:-52,z:42},{x:0,z:42},{x:52,z:42}];
                 legPositions.forEach(pos => {
@@ -300,38 +306,51 @@
             constructor() {
                 this.clock = new THREE.Clock();
                 this.lastTime = 0;
-                this.fpsLimit = isMobile ? 1/30 : 0; // 30 FPS on mobile, unlimited on desktop
+                this.fpsLimit = isMobile ? 1/30 : 0;
 
                 this.scene = new THREE.Scene();
                 this.scene.background = new THREE.Color(0x1a1a1a);
                 
-                this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 3000);
-                const camDist = isMobile ? 1100 : 800;
-                this.camera.position.set(camDist, camDist, camDist);
+                this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
+                this.defaultPos = isMobile ? new THREE.Vector3(1100, 1100, 1100) : new THREE.Vector3(800, 800, 800);
+                this.camera.position.copy(this.defaultPos);
                 
-                this.renderer = new THREE.WebGLRenderer({ antialias: !isMobile, alpha: false });
+                this.renderer = new THREE.WebGLRenderer({ antialias: !isMobile });
                 this.renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2));
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
                 document.body.appendChild(this.renderer.domElement);
                 
                 this.controls = new OrbitControls(this.camera, this.renderer.domElement);
                 this.controls.enableDamping = true;
-                this.controls.dampingFactor = 0.08;
+                this.controls.dampingFactor = 0.1;
                 this.controls.target.set(0, 50, 0);
-                this.controls.maxPolarAngle = Math.PI / 2.1;
                 
-                // Logic 1: Auto-rotate control
+                // --- ระบบควบคุมการมองเห็นที่ปรับปรุงใหม่ ---
+                this.controls.minDistance = 20;   // ซูมเข้าได้ลึกขึ้น
+                this.controls.maxDistance = 3000; // ซูมออกได้กว้างขึ้น
+                
+                // เปิดใช้งานการเลื่อนหน้าจอ (Panning)
+                this.controls.enablePan = true;
+                this.controls.panSpeed = 1.5;     // เพิ่มความเร็วในการเลื่อนหน้าจอบนมือถือ
+                this.controls.screenSpacePanning = true; // เลื่อนตามแนวระนาบของหน้าจอ (สำคัญสำหรับซูมแล้วตามไปดู)
+                
+                this.controls.maxPolarAngle = Math.PI / 1.7; // กันมุมมองคว่ำ
                 this.controls.autoRotate = !isMobile; 
                 this.controls.autoRotateSpeed = 0.5;
 
                 this.initLights();
                 this.initLayout();
                 
+                resetBtn.addEventListener('click', () => this.resetView());
                 window.addEventListener('resize', () => this.onResize());
                 this.animate();
+            }
 
-                // Update UI based on mode
-                document.getElementById('perf-mode').textContent = `Mode: ${isMobile ? 'Mobile Optimized (30 FPS)' : 'High Quality'}`;
+            resetView() {
+                // อนิเมชั่นกลับจุดเดิม (แบบง่าย)
+                this.camera.position.copy(this.defaultPos);
+                this.controls.target.set(0, 50, 0);
+                this.controls.update();
             }
 
             onResize() {
@@ -341,23 +360,21 @@
             }
 
             initLights() {
-                this.scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-                const dLight = new THREE.DirectionalLight(0xffffff, 0.6);
+                this.scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+                const dLight = new THREE.DirectionalLight(0xffffff, 0.8);
                 dLight.position.set(100, 300, 100);
                 this.scene.add(dLight);
             }
 
             createBox(x, y, z, rotY) {
-                const boxW = 27; const boxH = 40; const boxD = 12;
-                // Logic 3: Simplify geometry for mobile
-                const geometry = new THREE.BoxGeometry(boxW, boxH, boxD);
-                
-                const front = ArtworkGenerator.getFrontLabel();
-                const side = ArtworkGenerator.getSideTexture();
-                const white = new THREE.MeshLambertMaterial({ color: 0xffffff });
+                const geometry = new THREE.BoxGeometry(27, 40, 12);
                 const mats = [
-                    white, new THREE.MeshLambertMaterial({ map: side }), white,
-                    white, new THREE.MeshLambertMaterial({ map: front }), white
+                    new THREE.MeshLambertMaterial({ color: 0xffffff }),
+                    new THREE.MeshLambertMaterial({ map: ArtworkGenerator.getSideTexture() }),
+                    new THREE.MeshLambertMaterial({ color: 0xffffff }),
+                    new THREE.MeshLambertMaterial({ color: 0xffffff }),
+                    new THREE.MeshLambertMaterial({ map: ArtworkGenerator.getFrontLabel() }),
+                    new THREE.MeshLambertMaterial({ color: 0xffffff })
                 ];
                 const mesh = new THREE.Mesh(geometry, mats);
                 mesh.position.set(x, y, z);
@@ -385,30 +402,24 @@
 
             initLayout() {
                 const spread = isMobile ? 280 : 250;
-                
-                // Logic 2: Reduce layers on mobile
                 const woodLayers = isMobile ? 6 : 8;
                 const plasticLayers = isMobile ? 8 : 12;
 
-                // Update UI Labels
                 document.getElementById('wood-label-ui').textContent = `ซ้าย: Wood Pallet (${woodLayers} ชั้น)`;
                 document.getElementById('plastic-label-ui').textContent = `กลาง: Plastic Blue (${plasticLayers} ชั้น)`;
 
-                // 1. Wood
                 const wood = new WoodPallets().group;
                 for(let i=0; i<woodLayers; i++) wood.add(this.createPattern(i%2!==0, 15 + 6 + (i*12)));
                 const l1 = ArtworkGenerator.createFloatingLabel(`WOOD: ${woodLayers} Layers`, '#deb887');
                 l1.position.y = woodLayers * 12 + 40; wood.add(l1);
                 wood.position.x = -spread; this.scene.add(wood);
 
-                // 2. Blue
                 const blue = new PlasticPallets().group;
                 for(let i=0; i<plasticLayers; i++) blue.add(this.createPattern(i%2===0, 15 + 6 + (i*12)));
                 const l2 = ArtworkGenerator.createFloatingLabel(`PLASTIC: ${plasticLayers} Layers`, '#4dabf7');
                 l2.position.y = plasticLayers * 12 + 40; blue.add(l2);
                 this.scene.add(blue);
 
-                // 3. Red + Hood
                 const red = new PlasticPallets(120, 100, 15, 0xc0392b).group;
                 for(let i=0; i<plasticLayers; i++) red.add(this.createPattern(i%2!==0, 15 + 6 + (i*12)));
                 const hoodHeight = 15 + (plasticLayers * 12);
@@ -424,13 +435,9 @@
 
             animate() {
                 requestAnimationFrame(() => this.animate());
-                
-                // Logic 4: Frame rate limiter
                 const delta = this.clock.getDelta();
                 this.lastTime += delta;
-
                 if (this.fpsLimit > 0 && this.lastTime < this.fpsLimit) return;
-                
                 this.lastTime = 0;
                 this.controls.update();
                 this.renderer.render(this.scene, this.camera);
