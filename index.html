@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D Box Layering System - IRPC Public Company Limited</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #1a1a1a; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            touch-action: none;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+        }
+        
+        #main-header {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 5;
+            text-align: center;
+            pointer-events: none;
+            width: 90%;
+        }
+        #main-header h1 {
+            color: #ffffff;
+            margin: 0;
+            font-size: clamp(14px, 4vw, 22px);
+            letter-spacing: 1px;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+            background: rgba(0, 0, 0, 0.6);
+            padding: 6px 16px;
+            border-radius: 50px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            display: inline-block;
+            white-space: nowrap;
+        }
+
+        #toggle-info {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 20;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        #info {
+            position: absolute;
+            top: 65px;
+            left: 15px;
+            right: 15px;
+            max-width: 300px;
+            color: white;
+            background: rgba(0,0,0,0.9);
+            padding: 12px;
+            border-radius: 12px;
+            z-index: 10;
+            border: 1px solid #444;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            display: none;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        #controls-hint {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #aaa;
+            background: rgba(0,0,0,0.6);
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+        
+        #credit {
+            position: absolute;
+            bottom: 8px;
+            right: 10px;
+            color: rgba(255,255,255,0.2);
+            font-size: 9px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="main-header">
+        <h1>IRPC Public Company Limited</h1>
+    </div>
+
+    <button id="toggle-info">?</button>
+
+    <div id="info">
+        <b style="color: #00d4ff;">ระบบเปรียบเทียบพาเลท (Super Optimized)</b><br>
+        <span id="wood-label-ui" style="color: #deb887;">-</span><br>
+        <span id="plastic-label-ui" style="color: #4dabf7;">-</span><br>
+        <span style="color: #ff4d4d;">ขวา: Plastic Red + Hood Protection</span><br>
+        <hr style="border:0; border-top:1px solid #333; margin:8px 0;">
+        <small id="perf-mode">Performance Mode: Active</small>
+    </div>
+
+    <div id="controls-hint">
+        📱 หมุน: 1 นิ้ว | ซูม: 2 นิ้ว
+    </div>
+
+    <div id="credit">Created by Jamorn</div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Check if device is mobile
+        const isMobile = window.innerWidth < 768;
+        
+        // UI Logic
+        const infoBtn = document.getElementById('toggle-info');
+        const infoPanel = document.getElementById('info');
+        let isPanelVisible = false;
+
+        infoBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            isPanelVisible = !isPanelVisible;
+            infoPanel.style.display = isPanelVisible ? 'block' : 'none';
+            infoBtn.textContent = isPanelVisible ? '✕' : '?';
+        });
+
+        // Shared Textures
+        let sharedFrontTexture = null;
+        let sharedSideTexture = null;
+
+        class ArtworkGenerator {
+            static getFrontLabel() {
+                if (sharedFrontTexture) return sharedFrontTexture;
+                const canvas = document.createElement('canvas');
+                canvas.width = 512; canvas.height = 768;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = '#222'; ctx.lineWidth = 20;
+                ctx.strokeRect(40, 40, canvas.width - 80, canvas.height - 80);
+                
+                ctx.fillStyle = '#e91e63'; ctx.font = 'bold 60px sans-serif'; ctx.textAlign = 'center';
+                ctx.fillText('PREMIUM', canvas.width / 2, 200);
+                ctx.fillStyle = '#333'; ctx.font = 'bold 80px sans-serif';
+                ctx.fillText('PRODUCT', canvas.width / 2, 280);
+                
+                ctx.fillStyle = '#00d4ff'; ctx.fillRect(100, 320, canvas.width - 200, 10);
+                ctx.font = '30px sans-serif'; ctx.fillStyle = '#666';
+                ctx.fillText('Size: 27 x 40 x 12 cm', canvas.width / 2, 450);
+                
+                ctx.fillStyle = '#000';
+                for(let i=0; i<20; i++) {
+                    ctx.fillRect(150 + (i*10), 550, 5, 80);
+                }
+
+                sharedFrontTexture = new THREE.CanvasTexture(canvas);
+                sharedFrontTexture.anisotropy = 2;
+                return sharedFrontTexture;
+            }
+
+            static getSideTexture() {
+                if (sharedSideTexture) return sharedSideTexture;
+                const canvas = document.createElement('canvas');
+                // ใช้ความละเอียดต่ำลงบนมือถือเพื่อลด VRAM
+                canvas.width = isMobile ? 1024 : 2048; 
+                canvas.height = isMobile ? 256 : 512;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#000000'; ctx.textBaseline = 'middle';
+                
+                const scale = isMobile ? 0.5 : 1;
+                const midY = canvas.height / 2;
+                const centerX = canvas.width / 2;
+                let startX = centerX - (800 * scale);
+
+                ctx.textAlign = 'left';
+                ctx.font = `bold ${65 * scale}px sans-serif`;
+                ctx.fillText('1126NK 0260204008', startX, midY);
+                startX += (690 * scale); 
+
+                const symbolX = startX + (50 * scale);
+                const symbolY = midY;
+                ctx.lineWidth = 7 * scale; ctx.strokeStyle = '#000';
+                ctx.beginPath();
+                ctx.moveTo(symbolX, symbolY - (37 * scale)); ctx.lineTo(symbolX + (37 * scale), symbolY); ctx.lineTo(symbolX, symbolY + (37 * scale)); ctx.lineTo(symbolX - (37 * scale), symbolY);
+                ctx.closePath(); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(symbolX, symbolY - (37 * scale)); ctx.lineTo(symbolX, symbolY + (37 * scale)); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(symbolX - (17 * scale), symbolY); ctx.lineTo(symbolX + (17 * scale), symbolY); ctx.stroke();
+
+                ctx.font = `bold ${30 * scale}px sans-serif`;
+                ctx.fillText('TIS.1306-2566', symbolX + (55 * scale), midY - (19 * scale));
+                ctx.fillText('PP-01-1-5-F', symbolX + (55 * scale), midY + (19 * scale));
+                startX += (320 * scale); 
+
+                const qrX = startX; const qrY = midY - (42 * scale);
+                ctx.fillRect(qrX, qrY, 85 * scale, 85 * scale); ctx.fillStyle = '#fff';
+                for(let i=0; i<3; i++) for(let j=0; j<3; j++) if((i+j)%2==0) ctx.fillRect(qrX+(9*scale)+(i*24*scale), qrY+(9*scale)+(j*24*scale), 20*scale, 20*scale);
+                ctx.fillStyle = '#000';
+                startX += (140 * scale); 
+
+                ctx.font = `bold ${37 * scale}px sans-serif`;
+                ctx.fillText('PP HOMO', startX, midY - (19 * scale)); ctx.fillText('B  06:28', startX, midY + (19 * scale));
+                startX += (230 * scale); ctx.font = `italic bold ${42 * scale}px sans-serif`;
+                ctx.fillText('(RoHS)', startX, midY);
+
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.center.set(0.5, 0.5); 
+                texture.rotation = (Math.PI / 2) + Math.PI; 
+                texture.anisotropy = isMobile ? 2 : 4;
+                sharedSideTexture = texture;
+                return sharedSideTexture;
+            }
+
+            static createFloatingLabel(text, color) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 512; canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                ctx.roundRect(0, 0, 512, 128, 20); ctx.fill();
+                ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.stroke();
+                ctx.fillStyle = 'white'; ctx.font = 'bold 32px sans-serif';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(text, 256, 64);
+                
+                const tex = new THREE.CanvasTexture(canvas);
+                const mat = new THREE.SpriteMaterial({ map: tex });
+                const sprite = new THREE.Sprite(mat);
+                sprite.scale.set(100, 25, 1);
+                return sprite;
+            }
+        }
+
+        class WoodPallets {
+            constructor(width = 120, length = 100, height = 15) {
+                this.group = new THREE.Group();
+                const woodMat = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
+                // Simplify geometry for mobile (fewer segments)
+                const boardGeo = new THREE.BoxGeometry(14, 2, length);
+                const stringerGeo = new THREE.BoxGeometry(4, height - 4, length);
+                
+                for (let i = 0; i < 7; i++) {
+                    const board = new THREE.Mesh(boardGeo, woodMat);
+                    board.position.set(-width/2 + 7 + (i * 17.5), height - 1, 0);
+                    this.group.add(board);
+                }
+                for (let i = 0; i < 3; i++) {
+                    const stringer = new THREE.Mesh(stringerGeo, woodMat);
+                    stringer.position.set(-width/2 + 2 + (i * (width/2 - 2)), (height-4)/2 + 2, 0);
+                    this.group.add(stringer);
+                }
+            }
+        }
+
+        class PlasticPallets {
+            constructor(width = 120, length = 100, height = 15, color = 0x0a3d91) {
+                this.group = new THREE.Group();
+                const plasticMat = new THREE.MeshLambertMaterial({ color: color });
+                const topDeck = new THREE.Mesh(new THREE.BoxGeometry(width, 3, length), plasticMat);
+                topDeck.position.y = height - 1.5;
+                this.group.add(topDeck);
+                
+                const legGeo = new THREE.BoxGeometry(15, height - 3, 15);
+                const legPositions = [{x:-52,z:-42},{x:0,z:-42},{x:52,z:-42},{x:-52,z:0},{x:0,z:0},{x:52,z:0},{x:-52,z:42},{x:0,z:42},{x:52,z:42}];
+                legPositions.forEach(pos => {
+                    const leg = new THREE.Mesh(legGeo, plasticMat);
+                    leg.position.set(pos.x, (height - 3) / 2, pos.z);
+                    this.group.add(leg);
+                });
+            }
+        }
+
+        class BoxApp {
+            constructor() {
+                this.clock = new THREE.Clock();
+                this.lastTime = 0;
+                this.fpsLimit = isMobile ? 1/30 : 0; // 30 FPS on mobile, unlimited on desktop
+
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x1a1a1a);
+                
+                this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 3000);
+                const camDist = isMobile ? 1100 : 800;
+                this.camera.position.set(camDist, camDist, camDist);
+                
+                this.renderer = new THREE.WebGLRenderer({ antialias: !isMobile, alpha: false });
+                this.renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2));
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                document.body.appendChild(this.renderer.domElement);
+                
+                this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.08;
+                this.controls.target.set(0, 50, 0);
+                this.controls.maxPolarAngle = Math.PI / 2.1;
+                
+                // Logic 1: Auto-rotate control
+                this.controls.autoRotate = !isMobile; 
+                this.controls.autoRotateSpeed = 0.5;
+
+                this.initLights();
+                this.initLayout();
+                
+                window.addEventListener('resize', () => this.onResize());
+                this.animate();
+
+                // Update UI based on mode
+                document.getElementById('perf-mode').textContent = `Mode: ${isMobile ? 'Mobile Optimized (30 FPS)' : 'High Quality'}`;
+            }
+
+            onResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            initLights() {
+                this.scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+                const dLight = new THREE.DirectionalLight(0xffffff, 0.6);
+                dLight.position.set(100, 300, 100);
+                this.scene.add(dLight);
+            }
+
+            createBox(x, y, z, rotY) {
+                const boxW = 27; const boxH = 40; const boxD = 12;
+                // Logic 3: Simplify geometry for mobile
+                const geometry = new THREE.BoxGeometry(boxW, boxH, boxD);
+                
+                const front = ArtworkGenerator.getFrontLabel();
+                const side = ArtworkGenerator.getSideTexture();
+                const white = new THREE.MeshLambertMaterial({ color: 0xffffff });
+                const mats = [
+                    white, new THREE.MeshLambertMaterial({ map: side }), white,
+                    white, new THREE.MeshLambertMaterial({ map: front }), white
+                ];
+                const mesh = new THREE.Mesh(geometry, mats);
+                mesh.position.set(x, y, z);
+                mesh.rotation.set(-Math.PI/2, 0, rotY);
+                return mesh;
+            }
+
+            createPattern(isAlt, baseY) {
+                const group = new THREE.Group();
+                if (!isAlt) {
+                    group.add(this.createBox(-27.5, baseY, 13.5, 0));
+                    group.add(this.createBox(0, baseY, 13.5, 0));
+                    group.add(this.createBox(27.5, baseY, 13.5, Math.PI));
+                    group.add(this.createBox(-20.25, baseY, -20, -Math.PI/2));
+                    group.add(this.createBox(20.25, baseY, -20, -Math.PI/2));
+                } else {
+                    group.add(this.createBox(-20.25, baseY, 20, Math.PI/2));
+                    group.add(this.createBox(20.25, baseY, 20, Math.PI/2));
+                    group.add(this.createBox(-27.5, baseY, -13.5, 0));
+                    group.add(this.createBox(0, baseY, -13.5, 0));
+                    group.add(this.createBox(27.5, baseY, -13.5, Math.PI));
+                }
+                return group;
+            }
+
+            initLayout() {
+                const spread = isMobile ? 280 : 250;
+                
+                // Logic 2: Reduce layers on mobile
+                const woodLayers = isMobile ? 6 : 8;
+                const plasticLayers = isMobile ? 8 : 12;
+
+                // Update UI Labels
+                document.getElementById('wood-label-ui').textContent = `ซ้าย: Wood Pallet (${woodLayers} ชั้น)`;
+                document.getElementById('plastic-label-ui').textContent = `กลาง: Plastic Blue (${plasticLayers} ชั้น)`;
+
+                // 1. Wood
+                const wood = new WoodPallets().group;
+                for(let i=0; i<woodLayers; i++) wood.add(this.createPattern(i%2!==0, 15 + 6 + (i*12)));
+                const l1 = ArtworkGenerator.createFloatingLabel(`WOOD: ${woodLayers} Layers`, '#deb887');
+                l1.position.y = woodLayers * 12 + 40; wood.add(l1);
+                wood.position.x = -spread; this.scene.add(wood);
+
+                // 2. Blue
+                const blue = new PlasticPallets().group;
+                for(let i=0; i<plasticLayers; i++) blue.add(this.createPattern(i%2===0, 15 + 6 + (i*12)));
+                const l2 = ArtworkGenerator.createFloatingLabel(`PLASTIC: ${plasticLayers} Layers`, '#4dabf7');
+                l2.position.y = plasticLayers * 12 + 40; blue.add(l2);
+                this.scene.add(blue);
+
+                // 3. Red + Hood
+                const red = new PlasticPallets(120, 100, 15, 0xc0392b).group;
+                for(let i=0; i<plasticLayers; i++) red.add(this.createPattern(i%2!==0, 15 + 6 + (i*12)));
+                const hoodHeight = 15 + (plasticLayers * 12);
+                const hood = new THREE.Mesh(
+                    new THREE.BoxGeometry(122, hoodHeight + 5, 102),
+                    new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.25 })
+                );
+                hood.position.y = (hoodHeight + 5) / 2; red.add(hood);
+                const l3 = ArtworkGenerator.createFloatingLabel('HOOD PROTECTION', '#ff4d4d');
+                l3.position.y = plasticLayers * 12 + 40; red.add(l3);
+                red.position.x = spread; this.scene.add(red);
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                // Logic 4: Frame rate limiter
+                const delta = this.clock.getDelta();
+                this.lastTime += delta;
+
+                if (this.fpsLimit > 0 && this.lastTime < this.fpsLimit) return;
+                
+                this.lastTime = 0;
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        window.onload = () => new BoxApp();
+    </script>
+</body>
+</html>
